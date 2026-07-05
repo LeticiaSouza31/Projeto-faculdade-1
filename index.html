@@ -151,6 +151,7 @@
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: var(--primary-hover); }
         .btn-danger { background: var(--danger); color: white; padding: 0.4rem 0.8rem; font-size: 0.85rem;}
+        .btn-small { width: auto; padding: 0.35rem 0.6rem; }
         
         /* Filtros e Busca */
         .toolbar {
@@ -304,6 +305,8 @@
         let contadorId = 1001; // IDs no padrão ERP
 
         const form = document.getElementById("formPedido");
+        const tabelaPedidos = document.getElementById("tabelaPedidos");
+        const buscaInput = document.getElementById("busca");
 
         form.addEventListener("submit", function(e) {
             e.preventDefault();
@@ -311,4 +314,90 @@
         });
 
         function adicionarPedido() {
-            const cliente = document.getElementById("cliente").value;
+            const cliente = document.getElementById("cliente").value.trim();
+            const produtoOption = document.getElementById("produto").value;
+            const quantidade = Number(document.getElementById("quantidade").value);
+            const pagamento = document.getElementById("pagamento").value;
+            const status = document.getElementById("status").value;
+
+            if (!cliente || !produtoOption || quantidade <= 0) {
+                alert("Preencha todos os campos corretamente.");
+                return;
+            }
+
+            const parts = produtoOption.split("|");
+            const produto = parts[0] || produtoOption;
+            const valorUnitario = Number(parts[1] || 0);
+            const total = quantidade * valorUnitario;
+
+            const pedido = {
+                id: contadorId++,
+                data: new Date().toLocaleDateString("pt-BR"),
+                cliente,
+                produto,
+                quantidade,
+                total,
+                pagamento,
+                status
+            };
+
+            pedidos.push(pedido);
+            limparFormulario();
+            renderizarTabela();
+            atualizarKPIs();
+        }
+
+        function limparFormulario() {
+            form.reset();
+            document.getElementById("quantidade").value = 1;
+        }
+
+        function renderizarTabela() {
+            const textoBusca = (buscaInput.value || "").toLowerCase();
+            tabelaPedidos.innerHTML = "";
+
+            pedidos
+                .filter(p => p.cliente.toLowerCase().includes(textoBusca))
+                .forEach(pedido => {
+                    const tr = document.createElement("tr");
+                    const badgeClass = 'badge-' + pedido.status.toLowerCase().replace(/\s+/g, '-');
+                    tr.innerHTML = `
+                        <td>${pedido.id}</td>
+                        <td>${pedido.data}</td>
+                        <td>${pedido.cliente}</td>
+                        <td>${pedido.produto}</td>
+                        <td>${pedido.quantidade}</td>
+                        <td>R$ ${pedido.total.toFixed(2).replace('.', ',')}</td>
+                        <td>${pedido.pagamento}</td>
+                        <td><span class="badge ${badgeClass}">${pedido.status}</span></td>
+                        <td>
+                            <button class="btn btn-danger btn-small" type="button" onclick="removerPedido(${pedido.id})">Remover</button>
+                        </td>
+                    `;
+                    tabelaPedidos.appendChild(tr);
+                });
+        }
+
+        function removerPedido(id) {
+            pedidos = pedidos.filter(p => p.id !== id);
+            renderizarTabela();
+            atualizarKPIs();
+        }
+
+        function atualizarKPIs() {
+            document.getElementById("kpi-total-pedidos").textContent = pedidos.length;
+            const faturamento = pedidos.reduce((acc, pedido) => acc + pedido.total, 0);
+            document.getElementById("kpi-faturamento").textContent = `R$ ${faturamento.toFixed(2).replace('.', ',')}`;
+            document.getElementById("kpi-pendentes").textContent = pedidos.filter(p => p.status === "Pendente").length;
+        }
+
+        function filtrarTabela() {
+            renderizarTabela();
+        }
+
+        // Inicializa com dados de exemplo (opcional)
+        // pedidos.push({ id: contadorId++, data: new Date().toLocaleDateString('pt-BR'), cliente: 'ACME', produto: 'Notebook Dell', quantidade: 2, total: 9000, pagamento: 'Pix', status: 'Pendente' });
+        // atualizarKPIs(); renderizarTabela();
+    </script>
+</body>
+</html>
